@@ -1,0 +1,11 @@
+[gd_scene load_steps=3 format=3 uid="uid://brww5wxm6e0b0"]
+
+[ext_resource type="Script" uid="uid://blhqfimkfyqbc" path="res://scripts/chamber.gd" id="1_ecgjq"]
+
+[sub_resource type="Gradient" id="Gradient_ecgjq"]
+offsets = PackedFloat32Array(0, 0.327161, 0.666667, 1)
+colors = PackedColorArray(0.866667, 0.956863, 0.905882, 1, 0.403922, 0.752941, 0.564706, 1, 0.14902, 0.4, 0.498039, 1, 0.0705882, 0.254902, 0.439216, 1)
+
+[node name="Chamber" type="Node2D"]
+script = ExtResource("1_ecgjq")
+light_color_ramp = SubResource("Gradient_ecgjq")
