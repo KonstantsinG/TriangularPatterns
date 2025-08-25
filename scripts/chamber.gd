@@ -1,14 +1,29 @@
 extends Node2D
 
-@export_group("Simulation")
-@export var bounding_box : Rect2 = Rect2(0,0,0,0)
-
-@export_group("Colors")
-@export var light_position : Vector2 = Vector2(1000, 1000)
-@export var light_color_ramp : Gradient
+@export_group("Boundary")
+@export var bounding_box : Rect2 = Rect2(0, 0, 0, 0)
+@export_range(0, 150, 1, "or_greater") var off_screen_offset = 50
+@export var fullscreen : bool = true
+@export var draw_bounding_box : bool = false
+@export var bounding_box_color : Color = Color.WEB_GREEN
 
 @export_group("Points")
 @export_range(3, 1000, 1, "or_greater") var points_amount : int = 150
+@export_range(0, 250, 1, "or_greater") var points_min_spacing : float = 20
+@export var draw_points : bool = true
+@export var points_color : Color = Color.BLACK
+
+@export_group("Light")
+@export var light_position : Vector2 = Vector2(100, 100)
+@export_enum("Static", "Circular") var light_movement_mode = 0
+@export var light_color_ramp : Gradient
+@export_enum("Custom", "Mint", "Rainbow") var color_ramp_mode = 0
+
+@export_group("Triangulation")
+@export_enum("Delaunay", "Greedy") var triangulation_algorithm = 0
+@export var use_multiple_threads : bool = true
+@export var draw_triangle_borders : bool = false
+@export var triangle_borders_color : Color = Color.WHITE
 
 
 var points : Array[Vector2] = []
@@ -91,7 +106,7 @@ func _move_points() -> void:
 
 func _draw() -> void:
 	_draw_triangles()
-	#_draw_points()
+	_draw_points()
 	_draw_bounding_box()
 
 
