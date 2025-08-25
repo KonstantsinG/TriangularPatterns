@@ -2,7 +2,6 @@ extends Node2D
 
 @export_group("Boundary")
 @export var bounding_box : Rect2 = Rect2(0, 0, 0, 0)
-@export_range(0, 150, 1, "or_greater") var off_screen_offset = 50
 @export var fullscreen : bool = true
 @export var draw_bounding_box : bool = false
 @export var bounding_box_color : Color = Color.WEB_GREEN
@@ -43,16 +42,16 @@ func _ready() -> void:
 	bowyer_watson = BowyerWatsonTriangulator.new()
 	triangles = bowyer_watson.triangulate(points)
 	
-	setup_triangulation_thread()
+	_setup_triangulation_thread()
 
 
-func setup_triangulation_thread() -> void:
+func _setup_triangulation_thread() -> void:
 	triangulation_thread = Thread.new()
 	mutex = Mutex.new()
-	triangulation_thread.start(triangulation_loop)
+	triangulation_thread.start(_triangulation_loop)
 
 
-func triangulation_loop() -> void:
+func _triangulation_loop() -> void:
 	var new_triangles
 	var access
 	
@@ -71,20 +70,99 @@ func triangulation_loop() -> void:
 
 
 func _check_bounding_box() -> void:
-	if bounding_box == Rect2(0,0,0,0):
+	if fullscreen:
 		var window = get_window()
-		bounding_box = Rect2(-100, -100, window.size.x + 100, window.size.y + 100)
+		bounding_box = Rect2(0, 0, window.size.x, window.size.y)
 
 
 func _generate_points() -> void:
-	var pt = Vector2(0, 0)
+	var new_point = Vector2.ZERO
+	var max_iterations = 50
+	var current_iteration = 0
 	
+	# generate on_screen points
 	for i in range(points_amount):
-		pt.x = randf_range(bounding_box.position.x, bounding_box.size.x)
-		pt.y = randf_range(bounding_box.position.y, bounding_box.size.y)
-		points.append(pt)
+		current_iteration = 0
+		new_point = _generate_point()
+		# try generate valid point
+		while (!_is_point_valid(new_point) and current_iteration < max_iterations):
+			new_point = _generate_point()
+			current_iteration += 1
 		
-		targets.append(pt + Vector2(randf_range(-100, 100), randf_range(-100, 100)))
+		# add generated point if it is valid
+		if (current_iteration < max_iterations):
+			points.append(new_point)
+			targets.append(new_point + Vector2(randf_range(-100, 100), randf_range(-100, 100)))
+	
+	# generate off_screen points
+	var off_screen_offset = 50
+	var top_left = bounding_box.position - Vector2(off_screen_offset, off_screen_offset)
+	points.append(top_left)
+	targets.append(top_left)
+	
+	var top_right = Vector2(bounding_box.position.x + bounding_box.size.x + off_screen_offset, \
+							bounding_box.position.y - off_screen_offset)
+	points.append(top_right)
+	targets.append(top_right)
+	
+	var bottom_right = bounding_box.position + bounding_box.size + Vector2(off_screen_offset, off_screen_offset)
+	points.append(bottom_right)
+	targets.append(bottom_right)
+	
+	var bottom_left = Vector2(bounding_box.position.x - off_screen_offset, \
+							  bounding_box.position.y + bounding_box.size.y + off_screen_offset)
+	points.append(bottom_left)
+	targets.append(bottom_left)
+	
+	for p in _subdivide_line_segment(top_left, top_right):
+		points.append(p)
+		targets.append(p)
+	
+	for p in _subdivide_line_segment(top_right, bottom_right):
+		points.append(p)
+		targets.append(p)
+	
+	for p in _subdivide_line_segment(bottom_right, bottom_left):
+		points.append(p)
+		targets.append(p)
+	
+	for p in _subdivide_line_segment(bottom_left, top_left):
+		points.append(p)
+		targets.append(p)
+
+
+func _generate_point() -> Vector2:
+	var new_point = Vector2.ZERO
+	new_point.x = randf_range(bounding_box.position.x, bounding_box.position.x + bounding_box.size.x)
+	new_point.y = randf_range(bounding_box.position.y, bounding_box.position.y + bounding_box.size.y)
+	
+	return new_point
+
+
+func _is_point_valid(new_point) -> bool:
+	for p in points:
+		if p.distance_to(new_point) < points_min_spacing:
+			return false
+	
+	return true
+
+
+func _subdivide_line_segment(a : Vector2, b : Vector2) -> Array[Vector2]:
+	var new_points : Array[Vector2] = []
+	var segments = [ {"from" : a, "to" : b} ]
+	var c = (a + b) / 2
+	
+	while (a.distance_to(c) > points_min_spacing * 2):
+		for i in range(segments.size()):
+			a = segments[i]["from"]
+			b = segments[i]["to"]
+			c = (a + b) / 2
+			new_points.append(c)
+			
+			segments.append({"from" : a, "to" : c})
+			segments[i] = {"from" : c, "to" : b}
+	
+	return new_points
 
 
 func _process(_delta: float) -> void:
