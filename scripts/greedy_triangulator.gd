@@ -1,2 +1,2 @@
 class_name GreedyTriangulator
-extends Object
+extends RefCounted
