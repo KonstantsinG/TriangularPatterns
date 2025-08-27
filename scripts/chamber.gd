@@ -1,5 +1,10 @@
 extends Node2D
 
+# TODO
+# DANGER -> Fix boundary crossing bug
+# INFO -> Add light movement
+# INFO -> Add predefined gradients
+
 @export_group("Boundary")
 @export var bounding_box : Rect2 = Rect2(0, 0, 0, 0)
 @export var fullscreen : bool = true
@@ -25,6 +30,12 @@ extends Node2D
 @export var use_multiple_threads : bool = true
 @export var draw_triangle_borders : bool = false
 @export var triangle_borders_color : Color = Color.WHITE
+
+@export_group("Interaction")
+@export var cursor_interaction : bool = true
+@export_enum("Attract", "Repel", "Attract and Repel") var cursor_behaviour = 2
+@export_enum("Points", "Light") var interaction_target = 0
+@export_range(1, 100, 1) var force_magnitude : float = 20
 
 
 var points : Array[Vector2] = []
@@ -200,13 +211,32 @@ func _process(delta: float) -> void:
 
 ## move points towards specified direction
 func _move_points_directional(delta : float) -> void:
+	var left_input = Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT)
+	var right_input = Input.is_mouse_button_pressed(MOUSE_BUTTON_RIGHT)
+	
 	for i in range(points.size()):
-		points[i] += directions[i] * points_speed * delta
+		var velocity = directions[i] * points_speed
+		
+		if cursor_interaction and interaction_target == 0 and (left_input or right_input):
+			var mouse_position = get_global_mouse_position()
+			var cursor_direction = points[i].direction_to(mouse_position)
+			if (cursor_behaviour == 1) or (cursor_behaviour == 2 and right_input):
+				cursor_direction *= -1
+			
+			var distance_to_cursor = points[i].distance_to(mouse_position)
+			var distance_multiplier = distance_to_cursor * 0.01
+			var cursor_velocity = cursor_direction * force_magnitude / distance_multiplier
+			if directions[i] != Vector2.ZERO and distance_to_cursor > 15:
+				velocity += cursor_velocity
 		
 		if (points[i].x <= bounding_box.position.x) or (points[i].x >= bounding_box.position.x + bounding_box.size.x):
+			velocity.x *= -1
 			directions[i].x *= -1
 		if (points[i].y <= bounding_box.position.y) or (points[i].y >= bounding_box.position.y + bounding_box.size.y):
+			velocity.y *= -1
 			directions[i].y *= -1
+		
+		points[i] += velocity * delta
 
 
 func _draw() -> void:

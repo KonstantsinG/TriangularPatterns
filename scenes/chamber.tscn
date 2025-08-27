@@ -9,5 +9,7 @@ colors = PackedColorArray(0.866667, 0.956863, 0.905882, 1, 0.403922, 0.752941, 0
 [node name="Chamber" type="Node2D"]
 script = ExtResource("1_ecgjq")
 bounding_box = Rect2(50, 50, 1050, 550)
+fullscreen = false
+draw_bounding_box = true
 light_color_ramp = SubResource("Gradient_ecgjq")
 triangle_borders_color = Color(1, 1, 1, 0.152941)
