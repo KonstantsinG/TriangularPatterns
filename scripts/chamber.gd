@@ -3,7 +3,8 @@ extends Node2D
 # TODO
 # DANGER -> Fix boundary crossing bug
 # INFO -> Add light movement
-# INFO -> Add predefined gradients
+# INFO -> Add Magnitude and Radius for cursor interaction
+# WARNING -> Sort and fix spelling for gradients
 
 @export_group("Boundary")
 @export var bounding_box : Rect2 = Rect2(0, 0, 0, 0)
@@ -23,7 +24,9 @@ extends Node2D
 @export var light_position : Vector2 = Vector2(100, 100)
 @export_enum("Static", "Circular") var light_movement_mode = 0
 @export var light_color_ramp : Gradient
-@export_enum("Custom", "Mint", "Rainbow") var color_ramp_mode = 0
+#@export_enum("Custom", "Mint", "Rainbow", "Midnight", "Desert", "Marchmellow", "SunsetForest") var color_ramp_mode = 0
+@export_enum("Custom", "Mint", "Marchmellow", "Desert", "Midnight", "SunsetForest", "Cherry", "Bsq", "Rainbow", "B&W") \
+	var color_ramp_mode = 0
 
 @export_group("Triangulation")
 @export_enum("Delaunay", "Greedy") var triangulation_algorithm = 0
@@ -51,6 +54,8 @@ var mutex := Mutex.new()
 
 func _ready() -> void:
 	_check_bounding_box()
+	_checkk_gradient()
+	
 	_generate_points()
 	_setup_triangulation()
 
@@ -106,6 +111,73 @@ func _check_bounding_box() -> void:
 	if fullscreen:
 		var window = get_window()
 		bounding_box = Rect2(0, 0, window.size.x, window.size.y)
+
+
+func _checkk_gradient() -> void:
+	if color_ramp_mode != 0:
+		light_color_ramp = Gradient.new()
+	
+	match color_ramp_mode:
+		1: # mint
+			light_color_ramp.offsets = PackedFloat32Array([0.0, 0.333, 0.666, 1.0])
+			light_color_ramp.colors = PackedColorArray([
+				Color.from_rgba8(221, 244, 231), Color.from_rgba8(103, 192, 144),
+				Color.from_rgba8(38, 102, 128), Color.from_rgba8(18, 65, 112)
+			])
+		2: # rainbow
+			light_color_ramp.offsets = PackedFloat32Array([0.0, 0.155, 0.304, 0.447, 0.602, 0.758, 0.925])
+			light_color_ramp.colors = PackedColorArray([
+				Color.from_rgba8(232, 81, 81), Color.from_rgba8(245, 159, 88),
+				Color.from_rgba8(233, 196, 106), Color.from_rgba8(73, 184, 97),
+				Color.from_rgba8(117, 186, 184), Color.from_rgba8(66, 134, 173),
+				Color.from_rgba8(87, 50, 128)
+			])
+		3: #midnight
+			light_color_ramp.offsets = PackedFloat32Array([0.0, 0.08, 0.225, 0.385, 0.672, 1.0])
+			light_color_ramp.colors = PackedColorArray([
+				Color.from_rgba8(255, 214, 10), Color.from_rgba8(143, 86, 30),
+				Color.from_rgba8(36, 65, 92), Color.from_rgba8(0, 53, 102),
+				Color.from_rgba8(0, 29, 61), Color.from_rgba8(0, 8, 20)
+			])
+		4: # desert
+			light_color_ramp.offsets = PackedFloat32Array([0.0, 0.093, 0.267, 0.795, 1.0])
+			light_color_ramp.colors = PackedColorArray([
+				Color.from_rgba8(246, 241, 233), Color.from_rgba8(255, 217, 61),
+				Color.from_rgba8(255, 154, 0), Color.from_rgba8(79, 32, 13),
+				Color.from_rgba8(51, 19, 19)
+			])
+		5: # marshmellow
+			light_color_ramp.offsets = PackedFloat32Array([0.0, 0.255, 0.5, 0.888])
+			light_color_ramp.colors = PackedColorArray([
+				Color.from_rgba8(255, 242, 239), Color.from_rgba8(255, 207, 158),
+				Color.from_rgba8(247, 153, 153), Color.from_rgba8(81, 91, 122)
+			])
+		6: # forest sunset
+			light_color_ramp.offsets = PackedFloat32Array([0.05, 0.18, 0.373, 0.752, 0.925])
+			light_color_ramp.colors = PackedColorArray([
+				Color.from_rgba8(231, 111, 81), Color.from_rgba8(244, 162, 97),
+				Color.from_rgba8(233, 196, 106), Color.from_rgba8(42, 157, 143),
+				Color.from_rgba8(38, 70, 83)
+			])
+		7: # bsq
+			light_color_ramp.offsets = PackedFloat32Array([0.067, 0.207, 0.527, 0.787, 0.925])
+			light_color_ramp.colors = PackedColorArray([
+				Color.from_rgba8(138, 191, 166), Color.from_rgba8(191, 217, 195),
+				Color.from_rgba8(38, 37, 35), Color.from_rgba8(217, 141, 98),
+				Color.from_rgba8(166, 79, 60)
+			])
+		8: # cherry
+			light_color_ramp.offsets = PackedFloat32Array([0.043, 0.174, 0.36, 0.491, 0.919])
+			light_color_ramp.colors = PackedColorArray([
+				Color.from_rgba8(217, 141, 98), Color.from_rgba8(217, 85, 85),
+				Color.from_rgba8(217, 4, 82), Color.from_rgba8(191, 4, 91),
+				Color.from_rgba8(43, 40, 61)
+			])
+		9: #B&W
+			light_color_ramp.offsets = PackedFloat32Array([0.0, 1.0])
+			light_color_ramp.colors = PackedColorArray([
+				Color.from_rgba8(255, 255, 255), Color.from_rgba8(0, 0, 0)
+			])
 
 
 ## generate points for animation
@@ -189,7 +261,7 @@ func _subdivide_line_segment(a : Vector2, b : Vector2) -> Array[Vector2]:
 	var segments = [ {"from" : a, "to" : b} ]
 	var c = (a + b) / 2
 	
-	while (a.distance_to(c) > points_min_spacing * 2):
+	while (a.distance_to(c) > max(50, points_min_spacing * 2)):
 		for i in range(segments.size()):
 			a = segments[i]["from"]
 			b = segments[i]["to"]
