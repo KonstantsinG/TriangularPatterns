@@ -2,9 +2,11 @@ extends Node2D
 
 # TODO
 # DANGER -> Fix boundary crossing bug
+# DANGER -> Fix zero area triangles drawing
 # INFO -> Add light movement
-# INFO -> Add Magnitude and Radius for cursor interaction
-# WARNING -> Sort and fix spelling for gradients
+# INFO -> implement points chaotic movement
+# INFO -> implement points interaction
+# INFO -> implement interaction_radius
 
 @export_group("Boundary")
 @export var bounding_box : Rect2 = Rect2(0, 0, 0, 0)
@@ -15,36 +17,42 @@ extends Node2D
 @export_group("Points")
 @export_range(3, 1000, 1, "or_greater") var points_amount : int = 100
 @export_range(5, 250, 1, "or_greater") var points_min_spacing : float = 50
-@export_enum("Static", "Directional") var points_movement_mode = 1
+@export_enum("Static", "Directional", "Chaotic") var points_movement_mode = 1
+@export_enum("Ignore", "Repel") var points_interaction_mdoe = 0
 @export_range(1, 30, 1) var points_speed : float = 10
 @export var draw_points : bool = true
 @export var points_color : Color = Color.BLACK
 
 @export_group("Light")
 @export var light_position : Vector2 = Vector2(100, 100)
-@export_enum("Static", "Circular") var light_movement_mode = 0
+@export_enum("Static", "Circular", "Directional", "Chaotic") var light_movement_mode = 0
 @export var light_color_ramp : Gradient
-#@export_enum("Custom", "Mint", "Rainbow", "Midnight", "Desert", "Marchmellow", "SunsetForest") var color_ramp_mode = 0
-@export_enum("Custom", "Mint", "Marchmellow", "Desert", "Midnight", "SunsetForest", "Cherry", "Bsq", "Rainbow", "B&W") \
-	var color_ramp_mode = 0
+@export_enum("Custom", "B&W", "Mint", "Marshmallow", "Desert", "Midnight", "ForestSunset", "Cherry", "Biscuit", \
+			 "Rainbow", "Animated") var color_ramp_mode = 2
 
 @export_group("Triangulation")
-@export_enum("Delaunay", "Greedy") var triangulation_algorithm = 0
+@export_enum("Fastest", "More accurate") var triangulation_mode = 1
 @export var use_multiple_threads : bool = true
 @export var draw_triangle_borders : bool = false
 @export var triangle_borders_color : Color = Color.WHITE
 
 @export_group("Interaction")
 @export var cursor_interaction : bool = true
-@export_enum("Attract", "Repel", "Attract and Repel") var cursor_behaviour = 2
 @export_enum("Points", "Light") var interaction_target = 0
-@export_range(1, 100, 1) var force_magnitude : float = 20
+@export_enum("Attract", "Repel", "Attract and Repel") var points_interaction_mode = 2
+@export_range(1, 100, 1) var interaction_magnitude : float = 20
+@export_range(1, 150, 1) var interaction_radius : float = 50
 
 
 var points : Array[Vector2] = []
 var directions : Array[Vector2] = []
 var triangles : Array[Triangle]
 var triangulator = null
+
+var gradients_ratio : float = 0.0
+var current_gradient_id : int = 1
+var current_gradient_a : Gradient = null
+var current_gradient_b : Gradient = null
 
 var triangulation_timer : Timer = null
 var triangulate := true
@@ -54,7 +62,7 @@ var mutex := Mutex.new()
 
 func _ready() -> void:
 	_check_bounding_box()
-	_checkk_gradient()
+	light_color_ramp = _get_gradient_by_id(color_ramp_mode)
 	
 	_generate_points()
 	_setup_triangulation()
@@ -63,7 +71,7 @@ func _ready() -> void:
 ## setup triangulation algorithm and thread
 func _setup_triangulation() -> void:
 	# select triangulation algorithm
-	if triangulation_algorithm == 0:
+	if triangulation_mode == 1:
 		triangulator = BowyerWatsonTriangulator.new()
 	triangles = triangulator.triangulate(points)
 	
@@ -113,71 +121,18 @@ func _check_bounding_box() -> void:
 		bounding_box = Rect2(0, 0, window.size.x, window.size.y)
 
 
-func _checkk_gradient() -> void:
-	if color_ramp_mode != 0:
-		light_color_ramp = Gradient.new()
-	
-	match color_ramp_mode:
-		1: # mint
-			light_color_ramp.offsets = PackedFloat32Array([0.0, 0.333, 0.666, 1.0])
-			light_color_ramp.colors = PackedColorArray([
-				Color.from_rgba8(221, 244, 231), Color.from_rgba8(103, 192, 144),
-				Color.from_rgba8(38, 102, 128), Color.from_rgba8(18, 65, 112)
-			])
-		2: # rainbow
-			light_color_ramp.offsets = PackedFloat32Array([0.0, 0.155, 0.304, 0.447, 0.602, 0.758, 0.925])
-			light_color_ramp.colors = PackedColorArray([
-				Color.from_rgba8(232, 81, 81), Color.from_rgba8(245, 159, 88),
-				Color.from_rgba8(233, 196, 106), Color.from_rgba8(73, 184, 97),
-				Color.from_rgba8(117, 186, 184), Color.from_rgba8(66, 134, 173),
-				Color.from_rgba8(87, 50, 128)
-			])
-		3: #midnight
-			light_color_ramp.offsets = PackedFloat32Array([0.0, 0.08, 0.225, 0.385, 0.672, 1.0])
-			light_color_ramp.colors = PackedColorArray([
-				Color.from_rgba8(255, 214, 10), Color.from_rgba8(143, 86, 30),
-				Color.from_rgba8(36, 65, 92), Color.from_rgba8(0, 53, 102),
-				Color.from_rgba8(0, 29, 61), Color.from_rgba8(0, 8, 20)
-			])
-		4: # desert
-			light_color_ramp.offsets = PackedFloat32Array([0.0, 0.093, 0.267, 0.795, 1.0])
-			light_color_ramp.colors = PackedColorArray([
-				Color.from_rgba8(246, 241, 233), Color.from_rgba8(255, 217, 61),
-				Color.from_rgba8(255, 154, 0), Color.from_rgba8(79, 32, 13),
-				Color.from_rgba8(51, 19, 19)
-			])
-		5: # marshmellow
-			light_color_ramp.offsets = PackedFloat32Array([0.0, 0.255, 0.5, 0.888])
-			light_color_ramp.colors = PackedColorArray([
-				Color.from_rgba8(255, 242, 239), Color.from_rgba8(255, 207, 158),
-				Color.from_rgba8(247, 153, 153), Color.from_rgba8(81, 91, 122)
-			])
-		6: # forest sunset
-			light_color_ramp.offsets = PackedFloat32Array([0.05, 0.18, 0.373, 0.752, 0.925])
-			light_color_ramp.colors = PackedColorArray([
-				Color.from_rgba8(231, 111, 81), Color.from_rgba8(244, 162, 97),
-				Color.from_rgba8(233, 196, 106), Color.from_rgba8(42, 157, 143),
-				Color.from_rgba8(38, 70, 83)
-			])
-		7: # bsq
-			light_color_ramp.offsets = PackedFloat32Array([0.067, 0.207, 0.527, 0.787, 0.925])
-			light_color_ramp.colors = PackedColorArray([
-				Color.from_rgba8(138, 191, 166), Color.from_rgba8(191, 217, 195),
-				Color.from_rgba8(38, 37, 35), Color.from_rgba8(217, 141, 98),
-				Color.from_rgba8(166, 79, 60)
-			])
-		8: # cherry
-			light_color_ramp.offsets = PackedFloat32Array([0.043, 0.174, 0.36, 0.491, 0.919])
-			light_color_ramp.colors = PackedColorArray([
-				Color.from_rgba8(217, 141, 98), Color.from_rgba8(217, 85, 85),
-				Color.from_rgba8(217, 4, 82), Color.from_rgba8(191, 4, 91),
-				Color.from_rgba8(43, 40, 61)
-			])
-		9: #B&W
-			light_color_ramp.offsets = PackedFloat32Array([0.0, 1.0])
-			light_color_ramp.colors = PackedColorArray([
-				Color.from_rgba8(255, 255, 255), Color.from_rgba8(0, 0, 0)
-			])
+func _get_gradient_by_id(id : int) -> Gradient:
+	match id:
+		1: return ColorRamp.get_black_and_white_gradient()
+		2: return ColorRamp.get_mint_gradient()
+		3: return ColorRamp.get_marshmallow_gradient()
+		4: return ColorRamp.get_desert_gradient()
+		5: return ColorRamp.get_midnight_gradient()
+		6: return ColorRamp.get_forest_sunset_gradient()
+		7: return ColorRamp.get_cherry_gradient()
+		8: return ColorRamp.get_biscuit_gradient()
+		9: return ColorRamp.get_rainbow_gradient()
+		_: return light_color_ramp
 
 
 ## generate points for animation
@@ -278,6 +233,9 @@ func _process(delta: float) -> void:
 	if points_movement_mode == 1:
 		_move_points_directional(delta)
 	
+	if color_ramp_mode == 10:
+		_animate_gradient(delta)
+	
 	queue_redraw()
 
 
@@ -292,12 +250,12 @@ func _move_points_directional(delta : float) -> void:
 		if cursor_interaction and interaction_target == 0 and (left_input or right_input):
 			var mouse_position = get_global_mouse_position()
 			var cursor_direction = points[i].direction_to(mouse_position)
-			if (cursor_behaviour == 1) or (cursor_behaviour == 2 and right_input):
+			if (points_interaction_mode == 1) or (points_interaction_mode == 2 and right_input):
 				cursor_direction *= -1
 			
 			var distance_to_cursor = points[i].distance_to(mouse_position)
 			var distance_multiplier = distance_to_cursor * 0.01
-			var cursor_velocity = cursor_direction * force_magnitude / distance_multiplier
+			var cursor_velocity = cursor_direction * interaction_magnitude / distance_multiplier
 			if directions[i] != Vector2.ZERO and distance_to_cursor > 15:
 				velocity += cursor_velocity
 		
@@ -309,6 +267,27 @@ func _move_points_directional(delta : float) -> void:
 			directions[i].y *= -1
 		
 		points[i] += velocity * delta
+
+
+func _animate_gradient(delta : float) -> void:
+	if current_gradient_a == null or current_gradient_b == null:
+		current_gradient_a = _get_gradient_by_id(current_gradient_id)
+		current_gradient_b = _get_gradient_by_id(current_gradient_id + 1)
+	
+	if gradients_ratio >= 1.0:
+		gradients_ratio = 0.0
+		current_gradient_id += 1
+		
+		if current_gradient_id == 9:
+			current_gradient_id = 0
+			current_gradient_a = _get_gradient_by_id(9)
+			current_gradient_b = _get_gradient_by_id(1)
+		else:
+			current_gradient_a = _get_gradient_by_id(current_gradient_id)
+			current_gradient_b = _get_gradient_by_id(current_gradient_id + 1)
+	
+	gradients_ratio += 0.05 * delta
+	light_color_ramp = ColorRamp.mix_gradients(current_gradient_a, current_gradient_b, gradients_ratio)
 
 
 func _draw() -> void:
