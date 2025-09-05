@@ -1,12 +1,15 @@
 extends Node2D
 
 # TODO
-# DANGER -> Fix boundary crossing bug
 # DANGER -> Fix zero area triangles drawing
+# DANGER -> Fix fullscreen issue
+# WARNING -> Optimize gradients interpolation
 # INFO -> Add light movement
-# INFO -> implement points chaotic movement
-# INFO -> implement points interaction
-# INFO -> implement interaction_radius
+# INFO -> Implement cells interaction system
+# INFO -> Implement points chaotic movement
+# INFO -> Implement points interaction
+# INFO -> Implement interaction_radius
+# INFO -> COMMENTS!!!
 
 @export_group("Boundary")
 @export var bounding_box : Rect2 = Rect2(0, 0, 0, 0)
@@ -26,7 +29,7 @@ extends Node2D
 @export_group("Light")
 @export var light_position : Vector2 = Vector2(100, 100)
 @export_enum("Static", "Circular", "Directional", "Chaotic") var light_movement_mode = 0
-@export var light_color_ramp : Gradient
+@export var light_color_ramp : Gradient = Gradient.new()
 @export_enum("Custom", "B&W", "Mint", "Marshmallow", "Desert", "Midnight", "ForestSunset", "Cherry", "Biscuit", \
 			 "Rainbow", "Animated") var color_ramp_mode = 2
 
@@ -34,7 +37,7 @@ extends Node2D
 @export_enum("Fastest", "More accurate") var triangulation_mode = 1
 @export var use_multiple_threads : bool = true
 @export var draw_triangle_borders : bool = false
-@export var triangle_borders_color : Color = Color.WHITE
+@export var triangle_borders_color : Color = Color(1.0, 1.0, 1.0, 0.3)
 
 @export_group("Interaction")
 @export var cursor_interaction : bool = true
@@ -259,14 +262,35 @@ func _move_points_directional(delta : float) -> void:
 			if directions[i] != Vector2.ZERO and distance_to_cursor > 15:
 				velocity += cursor_velocity
 		
-		if (points[i].x <= bounding_box.position.x) or (points[i].x >= bounding_box.position.x + bounding_box.size.x):
-			velocity.x *= -1
-			directions[i].x *= -1
-		if (points[i].y <= bounding_box.position.y) or (points[i].y >= bounding_box.position.y + bounding_box.size.y):
-			velocity.y *= -1
-			directions[i].y *= -1
-		
+		_check_boundary_intersections(i)
 		points[i] += velocity * delta
+
+
+## check if point intersect boundary.
+## if so, we need to inverse direction (for auto movement)
+## and clamp position on boundary (for cursor following)
+func _check_boundary_intersections(point_idx : int) -> void:
+	# points with direction = 0 are static, we ignore them
+	if directions[point_idx] == Vector2.ZERO: return
+	
+	# negative x boundary
+	if (points[point_idx].x <= bounding_box.position.x):
+		directions[point_idx].x *= -1
+		points[point_idx].x = bounding_box.position.x + 1
+	# positive x boundary
+	if points[point_idx].x >= (bounding_box.position.x + bounding_box.size.x):
+		directions[point_idx].x *= -1
+		points[point_idx].x = bounding_box.position.x + bounding_box.size.x - 1
+	
+	# positive y boundary
+	if points[point_idx].y <= bounding_box.position.y:
+		directions[point_idx].y *= -1
+		points[point_idx].y = bounding_box.position.y + 1
+	
+	# negative y boundary
+	if (points[point_idx].y <= bounding_box.position.y) or (points[point_idx].y >= bounding_box.position.y + bounding_box.size.y):
+		directions[point_idx].y *= -1
+		points[point_idx].y = bounding_box.position.y + bounding_box.size.y - 1
 
 
 func _animate_gradient(delta : float) -> void:
