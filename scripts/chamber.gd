@@ -3,7 +3,6 @@ extends Node2D
 # TODO
 # DANGER -> Fix zero area triangles drawing
 # DANGER -> Fix fullscreen issue
-# WARNING -> Optimize gradients interpolation
 # INFO -> Add light movement
 # INFO -> Implement cells interaction system
 # INFO -> Implement points chaotic movement
@@ -29,9 +28,9 @@ extends Node2D
 @export_group("Light")
 @export var light_position : Vector2 = Vector2(100, 100)
 @export_enum("Static", "Circular", "Directional", "Chaotic") var light_movement_mode = 0
-@export var light_color_ramp : Gradient = Gradient.new()
-@export_enum("Custom", "B&W", "Mint", "Marshmallow", "Desert", "Midnight", "ForestSunset", "Cherry", "Biscuit", \
-			 "Rainbow", "Animated") var color_ramp_mode = 2
+@export var light_color_ramp : Gradient
+@export_enum("Custom", "Animated", "B&W", "Mint", "Marshmallow", "Desert", "Midnight", "ForestSunset", "Cherry", \
+			 "Biscuit", "Rainbow") var color_ramp_mode = 3
 
 @export_group("Triangulation")
 @export_enum("Fastest", "More accurate") var triangulation_mode = 1
@@ -52,10 +51,7 @@ var directions : Array[Vector2] = []
 var triangles : Array[Triangle]
 var triangulator = null
 
-var gradients_ratio : float = 0.0
-var current_gradient_id : int = 1
-var current_gradient_a : Gradient = null
-var current_gradient_b : Gradient = null
+var animated_gradient : ColorRamp.AnimatedGradient = null
 
 var triangulation_timer : Timer = null
 var triangulate := true
@@ -65,7 +61,7 @@ var mutex := Mutex.new()
 
 func _ready() -> void:
 	_check_bounding_box()
-	light_color_ramp = _get_gradient_by_id(color_ramp_mode)
+	_check_light_color_ramp()
 	
 	_generate_points()
 	_setup_triangulation()
@@ -124,18 +120,13 @@ func _check_bounding_box() -> void:
 		bounding_box = Rect2(0, 0, window.size.x, window.size.y)
 
 
-func _get_gradient_by_id(id : int) -> Gradient:
-	match id:
-		1: return ColorRamp.get_black_and_white_gradient()
-		2: return ColorRamp.get_mint_gradient()
-		3: return ColorRamp.get_marshmallow_gradient()
-		4: return ColorRamp.get_desert_gradient()
-		5: return ColorRamp.get_midnight_gradient()
-		6: return ColorRamp.get_forest_sunset_gradient()
-		7: return ColorRamp.get_cherry_gradient()
-		8: return ColorRamp.get_biscuit_gradient()
-		9: return ColorRamp.get_rainbow_gradient()
-		_: return light_color_ramp
+func _check_light_color_ramp() -> void:
+	if color_ramp_mode >= ColorRamp.FIRST_GRADIENT:
+		light_color_ramp = ColorRamp.get_gradient_by_id(color_ramp_mode)
+	elif color_ramp_mode == ColorRamp.ANIMATED_GRADIENT:
+		animated_gradient = ColorRamp.AnimatedGradient.new(ColorRamp.FIRST_GRADIENT, ColorRamp.FIRST_GRADIENT + 1)
+	elif color_ramp_mode == ColorRamp.CUSTOM_GRADIENT and light_color_ramp == null:
+		light_color_ramp = ColorRamp.get_gradient_by_id(ColorRamp.FIRST_GRADIENT)
 
 
 ## generate points for animation
@@ -236,7 +227,7 @@ func _process(delta: float) -> void:
 	if points_movement_mode == 1:
 		_move_points_directional(delta)
 	
-	if color_ramp_mode == 10:
+	if color_ramp_mode == ColorRamp.ANIMATED_GRADIENT:
 		_animate_gradient(delta)
 	
 	queue_redraw()
@@ -294,24 +285,12 @@ func _check_boundary_intersections(point_idx : int) -> void:
 
 
 func _animate_gradient(delta : float) -> void:
-	if current_gradient_a == null or current_gradient_b == null:
-		current_gradient_a = _get_gradient_by_id(current_gradient_id)
-		current_gradient_b = _get_gradient_by_id(current_gradient_id + 1)
+	if animated_gradient.interpolation_ratio >= 1.0:
+		animated_gradient.next_gradients_pair()
+		animated_gradient.interpolation_ratio = 0.0
 	
-	if gradients_ratio >= 1.0:
-		gradients_ratio = 0.0
-		current_gradient_id += 1
-		
-		if current_gradient_id == 9:
-			current_gradient_id = 0
-			current_gradient_a = _get_gradient_by_id(9)
-			current_gradient_b = _get_gradient_by_id(1)
-		else:
-			current_gradient_a = _get_gradient_by_id(current_gradient_id)
-			current_gradient_b = _get_gradient_by_id(current_gradient_id + 1)
-	
-	gradients_ratio += 0.05 * delta
-	light_color_ramp = ColorRamp.mix_gradients(current_gradient_a, current_gradient_b, gradients_ratio)
+	animated_gradient.interpolation_ratio += 0.05 * delta
+	animated_gradient.interpolate()
 
 
 func _draw() -> void:
@@ -353,7 +332,9 @@ func _draw_triangles() -> void:
 	# normalize distances and map them to color gradient
 	for i in range(triangles.size()):
 		var remapped_distance = remap(distances_to_light[i], min_distance, max_distance, 0, 1)
-		var triangle_color = light_color_ramp.sample(remapped_distance)
+		
+		var triangle_color = animated_gradient.sample(remapped_distance) if color_ramp_mode == ColorRamp.ANIMATED_GRADIENT \
+							 else light_color_ramp.sample(remapped_distance)
 		var triangles_points = PackedVector2Array([points[triangles[i].p1], points[triangles[i].p2], points[triangles[i].p3]])
 		
 		draw_colored_polygon(triangles_points, triangle_color)

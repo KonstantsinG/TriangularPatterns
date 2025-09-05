@@ -2,7 +2,116 @@ extends RefCounted
 class_name ColorRamp
 
 
-#region GRADIENTS
+#region GRADIENT_CONSTANTS
+# gradient modes
+const CUSTOM_GRADIENT 				:= 0
+const ANIMATED_GRADIENT 			:= 1
+# normal gradients
+const BW_GRADIENT 					:= 2
+const MINT_GRADIENT 				:= 3
+const MARSHMALLOW_GRADIENT 			:= 4
+const DESERT_GRADIENT 				:= 5
+const MIDNIGHT_GRADIENT 			:= 6
+const FOREST_SUNSET_GRADIENT 		:= 7
+const CHERRY_GRADIENT 				:= 8
+const BISCUIT_GRADIENT 				:= 9
+const RAINBOW_GRADIENT 				:= 10
+
+# normal gradients range
+const FIRST_GRADIENT 				:= 2
+const LAST_GRADIENT 				:= 10
+#endregion
+
+
+#region ANIMATED_GRADIENT
+class AnimatedGradient:
+	# gradient used for interpolation
+	var _gradient_a : Gradient
+	var _gradient_b : Gradient
+	var _gradient_a_id := 0
+	var _gradient_b_id := 0
+	
+	# gradient for interpolation result
+	var _new_gradient : Gradient
+	
+	var _interpolation_ratio := 0.0
+	var interpolation_ratio : float:
+		get: return _interpolation_ratio
+		set(value): _interpolation_ratio = value
+	
+	
+	## perform linear interpolation between two gradients
+	## by default interpolation ratio is taken from property with the same name
+	## to get the interpolation result call sample function
+	func interpolate(ratio : float = _interpolation_ratio) -> void:
+		var colors := []
+		
+		# calculate color for each new_gradient point
+		for ofs in _new_gradient.offsets:
+			# sample colors from two gradients and mix them
+			var color_a = _gradient_a.sample(ofs)
+			var color_b = _gradient_b.sample(ofs)
+			colors.push_back(_lerp_color(color_a, color_b, ratio))
+		
+		# store result
+		_new_gradient.colors = PackedColorArray(colors)
+	
+	
+	## sample color from interpolated gradient
+	func sample(offset : float) -> Color:
+		return _new_gradient.sample(offset)
+	
+	
+	## redefine two interpolation gradients
+	## new values will be taken from predefined gradients chain
+	func next_gradients_pair() -> void:
+		_gradient_a_id = ColorRamp.get_next_gradient_id(_gradient_a_id)
+		_gradient_b_id = ColorRamp.get_next_gradient_id(_gradient_b_id)
+		_gradient_a = ColorRamp.get_gradient_by_id(_gradient_a_id)
+		_gradient_b = ColorRamp.get_gradient_by_id(_gradient_b_id)
+		
+		_new_gradient = Gradient.new()
+		_calculate_new_gradient_points()
+	
+	
+	## initializes animated gradient
+	func _init(gradient_a_id : int, gradient_b_id : int) -> void:
+		_gradient_a = ColorRamp.get_gradient_by_id(gradient_a_id)
+		_gradient_b = ColorRamp.get_gradient_by_id(gradient_b_id)
+		_gradient_a_id = gradient_a_id
+		_gradient_b_id = gradient_b_id
+		
+		_new_gradient = Gradient.new()
+		_calculate_new_gradient_points()
+	
+	
+	## calculate points for new_gradient
+	## they will be used later for gradient interpolation
+	func _calculate_new_gradient_points() -> void:
+		# collect and sort all points from two gradients
+		var points := []
+		for p in _gradient_a.offsets:
+			if !points.has(p): points.push_back(p)
+		for p in _gradient_b.offsets:
+			if !points.has(p): points.push_back(p)
+		points.sort()
+		
+		# set points from two gradients to new_gradient
+		_new_gradient.offsets = PackedFloat32Array(points)
+	
+	
+	## linear interpolation between two colors
+	func _lerp_color(a : Color, b : Color, ratio : float) -> Color:
+		return Color(
+			lerpf(a.r, b.r, ratio),
+			lerpf(a.g, b.g, ratio),
+			lerpf(a.b, b.b, ratio),
+			lerpf(a.a, b.a, ratio)
+		)
+#endregion
+
+
+#region PREDEFINED_GRADIENTS
 static func get_black_and_white_gradient() -> Gradient:
 	var gradiennt = Gradient.new()
 	gradiennt.offsets = PackedFloat32Array([0.0, 1.0])
@@ -100,38 +209,24 @@ static func get_rainbow_gradient() -> Gradient:
 #endregion
 
 
-## linearly interpolates two gradients a and b by given ratio
-static func mix_gradients(a : Gradient, b : Gradient, ratio : float) -> Gradient:
-	var new_gradient = Gradient.new()
-	
-	# collect and sort all points from two gradients
-	var points := []
-	for p in a.offsets:
-		if !points.has(p): points.append(p)
-	for p in b.offsets:
-		if !points.has(p): points.append(p)
-	points.sort()
-	
-	# interpolate color for each point
-	var offsets := []
-	var colors := []
-	for p in points:
-		var color_a = a.sample(p)
-		var color_b = b.sample(p)
-		offsets.append(p)
-		colors.append(_lerp_color(color_a, color_b, ratio))
-	
-	new_gradient.offsets = PackedFloat32Array(offsets)
-	new_gradient.colors = PackedColorArray(colors)
-	
-	return new_gradient
+#region AUXILIARY_GRADIENT_FUNCTIONS
+static func get_gradient_by_id(id : int) -> Gradient:
+	match id:
+		BW_GRADIENT: 				return ColorRamp.get_black_and_white_gradient()
+		MINT_GRADIENT: 				return ColorRamp.get_mint_gradient()
+		MARSHMALLOW_GRADIENT: 		return ColorRamp.get_marshmallow_gradient()
+		DESERT_GRADIENT: 			return ColorRamp.get_desert_gradient()
+		MIDNIGHT_GRADIENT: 			return ColorRamp.get_midnight_gradient()
+		FOREST_SUNSET_GRADIENT: 	return ColorRamp.get_forest_sunset_gradient()
+		CHERRY_GRADIENT: 			return ColorRamp.get_cherry_gradient()
+		BISCUIT_GRADIENT: 			return ColorRamp.get_biscuit_gradient()
+		RAINBOW_GRADIENT: 			return ColorRamp.get_rainbow_gradient()
+		
+		_: 							return Gradient.new()
 
 
-## linearly interpolates two colors a and b by given ratio
-static func _lerp_color(a : Color, b : Color, ratio : float) -> Color:
-	return Color(
-		lerpf(a.r, b.r, ratio),
-		lerpf(a.g, b.g, ratio),
-		lerpf(a.b, b.b, ratio),
-		lerpf(a.a, b.a, ratio)
-	)
+static func get_next_gradient_id(id : int) -> int:
+	if id >= LAST_GRADIENT: 		return FIRST_GRADIENT
+	elif id < FIRST_GRADIENT:		return FIRST_GRADIENT
+	else:							return id + 1
+#endregion

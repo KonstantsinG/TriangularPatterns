@@ -7,4 +7,3 @@ script = ExtResource("1_ecgjq")
 bounding_box = Rect2(50, 50, 1050, 550)
 fullscreen = false
 draw_bounding_box = true
-color_ramp_mode = 10
