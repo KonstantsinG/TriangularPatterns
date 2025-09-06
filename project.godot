@@ -11,7 +11,7 @@ config_version=5
 [application]
 
 config/name="Triangles Animation"
-config/tags=PackedStringArray("mini_project")
+config/tags=PackedStringArray("mini_project", "triangulation")
 run/main_scene="uid://brww5wxm6e0b0"
 config/features=PackedStringArray("4.4", "GL Compatibility")
 config/icon="uid://dt766aswxv8vg"

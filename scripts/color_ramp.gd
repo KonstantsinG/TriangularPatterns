@@ -25,7 +25,7 @@ const LAST_GRADIENT 				:= 10
 
 #region ANIMATED_GRADIENT
 class AnimatedGradient:
-	# gradient used for interpolation
+	# gradients used for interpolation
 	var _gradient_a : Gradient
 	var _gradient_b : Gradient
 	var _gradient_a_id := 0
@@ -40,30 +40,30 @@ class AnimatedGradient:
 		set(value): _interpolation_ratio = value
 	
 	
-	## perform linear interpolation between two gradients
-	## by default interpolation ratio is taken from property with the same name
-	## to get the interpolation result call sample function
+	## perform linear interpolation between the two gradients
+	## by default, the interpolation ratio is taken from the property with the same name
+	## to get the interpolation result, call the sample() function
 	func interpolate(ratio : float = _interpolation_ratio) -> void:
 		var colors := []
 		
-		# calculate color for each new_gradient point
+		# calculate the color for each new_gradient point
 		for ofs in _new_gradient.offsets:
-			# sample colors from two gradients and mix them
+			# sample the colors from the two gradients and mix them
 			var color_a = _gradient_a.sample(ofs)
 			var color_b = _gradient_b.sample(ofs)
 			colors.push_back(_lerp_color(color_a, color_b, ratio))
 		
-		# store result
+		# store the result
 		_new_gradient.colors = PackedColorArray(colors)
 	
 	
-	## sample color from interpolated gradient
+	## sample a color from the interpolated gradient
 	func sample(offset : float) -> Color:
 		return _new_gradient.sample(offset)
 	
 	
-	## redefine two interpolation gradients
-	## new values will be taken from predefined gradients chain
+	## redefine the two interpolation gradients
+	## a new values will be taken from the predefined gradients chain
 	func next_gradients_pair() -> void:
 		_gradient_a_id = ColorRamp.get_next_gradient_id(_gradient_a_id)
 		_gradient_b_id = ColorRamp.get_next_gradient_id(_gradient_b_id)
@@ -85,10 +85,10 @@ class AnimatedGradient:
 		_calculate_new_gradient_points()
 	
 	
-	## calculate points for new_gradient
-	## they will be used later for gradient interpolation
+	## calculate a points for new_gradient
+	## they will be used later to interpolate the gradient
 	func _calculate_new_gradient_points() -> void:
-		# collect and sort all points from two gradients
+		# collect and sort all points from the two gradients
 		var points := []
 		for p in _gradient_a.offsets:
 			if !points.has(p): points.push_back(p)
@@ -96,11 +96,11 @@ class AnimatedGradient:
 			if !points.has(p): points.push_back(p)
 		points.sort()
 		
-		# set points from two gradients to new_gradient
+		# set the points from the two gradients to new_gradient
 		_new_gradient.offsets = PackedFloat32Array(points)
 	
 	
-	## linear interpolation between two colors
+	## linear interpolation between a two colors
 	func _lerp_color(a : Color, b : Color, ratio : float) -> Color:
 		return Color(
 			lerpf(a.r, b.r, ratio),
@@ -210,6 +210,7 @@ static func get_rainbow_gradient() -> Gradient:
 
 
 #region AUXILIARY_GRADIENT_FUNCTIONS
+## get a predefined gradient by its id
 static func get_gradient_by_id(id : int) -> Gradient:
 	match id:
 		BW_GRADIENT: 				return ColorRamp.get_black_and_white_gradient()
@@ -225,6 +226,7 @@ static func get_gradient_by_id(id : int) -> Gradient:
 		_: 							return Gradient.new()
 
 
+## get a new gradient id, taken from the predefined gradients chain
 static func get_next_gradient_id(id : int) -> int:
 	if id >= LAST_GRADIENT: 		return FIRST_GRADIENT
 	elif id < FIRST_GRADIENT:		return FIRST_GRADIENT
