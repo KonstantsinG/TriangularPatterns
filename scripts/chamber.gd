@@ -9,7 +9,6 @@ extends Node2D
 # INFO -> Implement points chaotic movement
 # INFO -> Implement points interaction
 # INFO -> Implement interaction_radius
-# INFO -> comment bowyer-watson triangulator and triangle
 
 #region EXPORT_PROPERTIES
 ## animation boundary settings
@@ -419,14 +418,19 @@ func _draw_points() -> void:
 func _draw_triangles() -> void:
 	mutex.lock() # lock triangulation data while drawing
 	
-	var distances_to_light = []
-	var edges = []
+	var distances_to_light := []
+	var edges := []
 	var max_distance = -INF
 	var min_distance = INF
 	
 	# prepare data for drawing
 	for i in range(triangles.size()):
-		# calculate distances from the triangles center to the light source position
+		# ignore invalid triangles
+		if !triangles[i].is_valid(points):
+			distances_to_light.push_back(NAN) # NAN value is used here as the invalid flag
+			continue
+		
+		# calculate distance from the triangle center to the light source position
 		var center = (points[triangles[i].p1] + points[triangles[i].p2] + points[triangles[i].p3]) / 3
 		var distance = center.distance_to(light_position)
 		distances_to_light.push_back(distance)
@@ -442,6 +446,9 @@ func _draw_triangles() -> void:
 	
 	# normalize distances and map them to the color gradient
 	for i in range(triangles.size()):
+		# ignore invalid triangles
+		if is_nan(distances_to_light[i]): continue
+		
 		# remap distance between the min and max found distances
 		var remapped_distance = remap(distances_to_light[i], min_distance, max_distance, 0, 1)
 		

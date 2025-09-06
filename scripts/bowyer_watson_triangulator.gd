@@ -15,8 +15,8 @@ func triangulate(points : Array[Vector2]) -> Array[Triangle]:
 	_points.push_back(Vector2(10_000, 10_000)) # bottom right
 	_points.push_back(Vector2(-10_000, 10_000)) # bottom left
 	_points.push_back(Vector2(0, -10_000)) # up center
-	# all triangles must be defined in a counterclockwise order
-	triangles.push_back(Triangle.new(size + 2, size + 1, size))
+	# all triangles must be defined in a clockwise order
+	triangles.push_back(Triangle.new(size + 2, size, size + 1))
 	
 	var corrupted_triangles : Array[Triangle]
 	var corrupted_edges : Array[Triangle.Edge]
@@ -81,7 +81,7 @@ func _is_in_circumcircle(point : int, triangle : Triangle) -> bool:
 		[ pc.x, pc.y, pc.x ** 2 + pc.y ** 2 ]
 	]
 	
-	# if the matrix determinant is greater than zero (and the triangle is set in counterclockwise order)
+	# if the matrix determinant is greater than zero (and the triangle is set in clockwise order)
 	# the given point is located inside the circumcircle
 	return _determinant(matrix) > 0
 
