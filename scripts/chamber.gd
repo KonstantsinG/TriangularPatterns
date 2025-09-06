@@ -1,8 +1,6 @@
 extends Node2D
 
 # TODO
-# DANGER -> Fix zero area triangles drawing
-# DANGER -> Fix fullscreen issue
 # WARNING -> _is_point_valid() must use cells system
 # INFO -> Add light movement
 # INFO -> Implement cells interaction system
@@ -137,8 +135,7 @@ func _ready() -> void:
 ## set the bounding box according to a given conditions
 func _set_bounding_box() -> void:
 	if fullscreen: # if fullscreen is true - set bounding box as window dimensions
-		var window = get_window()
-		bounding_box = Rect2(0, 0, window.size.x, window.size.y)
+		bounding_box = Rect2(Vector2.ZERO, get_viewport().get_visible_rect().size)
 	# otherwise - use user-defined dimensions
 
 
