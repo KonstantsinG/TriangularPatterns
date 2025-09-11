@@ -4,6 +4,9 @@ extends RefCounted
 var _points : Array[Vector2]
 
 
+# TODO -> rename class to DelunayTriangulator
+
+
 ## generate a triangular grid from a given points array
 func triangulate(points : Array[Vector2]) -> Array[Triangle]:
 	var triangles : Array[Triangle] = []

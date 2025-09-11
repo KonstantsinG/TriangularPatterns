@@ -7,14 +7,15 @@ extends Node2D
 # INFO -> Implement points chaotic movement
 # INFO -> Implement points interaction
 # INFO -> Implement interaction_radius
+# INFO -> Add more points interacion modes
 
 #region EXPORT_PROPERTIES
 ## animation boundary settings
 @export_group("Boundary")
 ## animation area dimensions
 @export var bounding_box : Rect2 = Rect2(50, 50, 1050, 550)
-## use fullscreen mode for the animation area dimensions
-## if true - will use a window dimensions for bounding_box value
+## use fullscreen mode for the animation area dimensions [br]
+## if true - will use a window dimensions for bounding_box value [br]
 ## if false - will use a user-defined bounding_box value
 @export var fullscreen : bool = true
 ## draw the animation area dimensions
@@ -268,6 +269,8 @@ func _subdivide_line_segment(a : Vector2, b : Vector2) -> Array[Vector2]:
 ## setup the triangulation algorithm and the thread
 func _setup_triangulation() -> void:
 	# select triangulation algorithm
+	if triangulation_mode == 0:
+		triangulator = GreedyTriangulator.new()
 	if triangulation_mode == 1:
 		triangulator = BowyerWatsonTriangulator.new()
 	triangles = triangulator.triangulate(points)
