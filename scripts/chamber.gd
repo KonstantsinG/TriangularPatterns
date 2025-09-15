@@ -8,6 +8,7 @@ extends Node2D
 # INFO -> Implement points interaction
 # INFO -> Implement interaction_radius
 # INFO -> Add more points interacion modes
+# TOFIX -> add offscreen points offset variable
 
 #region EXPORT_PROPERTIES
 ## animation boundary settings
@@ -270,10 +271,11 @@ func _subdivide_line_segment(a : Vector2, b : Vector2) -> Array[Vector2]:
 func _setup_triangulation() -> void:
 	# select triangulation algorithm
 	if triangulation_mode == 0:
-		triangulator = GreedyTriangulator.new()
+		triangulator = GreedyTriangulator.new(Vector2(bounding_box.size.x + 50 * 2,
+													  bounding_box.size.y + 50 * 2))
 	if triangulation_mode == 1:
 		triangulator = BowyerWatsonTriangulator.new()
-	triangles = triangulator.triangulate(points)
+	triangles = triangulator.triangulate(PackedVector2Array(points))
 	
 	if use_multiple_threads: # run triangulation loop in the separated thred
 		triangulation_thread = Thread.new()
@@ -301,7 +303,7 @@ func _triangulation_loop() -> void:
 		# command for shutdown the triangulation thread
 		if access == false: break
 		
-		new_triangles = triangulator.triangulate(points)
+		new_triangles = triangulator.triangulate(PackedVector2Array(points))
 		mutex.lock()
 		triangles = new_triangles
 		mutex.unlock()

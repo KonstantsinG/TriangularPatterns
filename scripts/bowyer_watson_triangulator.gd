@@ -1,6 +1,7 @@
 class_name BowyerWatsonTriangulator
 extends RefCounted
 
+
 var _points : Array[Vector2]
 
 

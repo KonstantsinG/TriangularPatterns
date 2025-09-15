@@ -16,10 +16,6 @@ class Edge:
 	func _init(_p1 : int, _p2 : int) -> void:
 		p1 = _p1
 		p2 = _p2
-	
-	
-	func key() -> float:
-		return (p1 << 32) | p2
 
 
 func _init(_p1 : int, _p2 : int, _p3 : int) -> void:
