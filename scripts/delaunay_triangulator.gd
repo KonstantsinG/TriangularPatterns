@@ -1,11 +1,8 @@
-class_name BowyerWatsonTriangulator
+class_name DelaunayTriangulator
 extends RefCounted
 
 
 var _points : Array[Vector2]
-
-
-# TODO -> rename class to DelunayTriangulator
 
 
 ## generate a triangular grid from a given points array

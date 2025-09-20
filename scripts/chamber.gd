@@ -274,7 +274,7 @@ func _setup_triangulation() -> void:
 		triangulator = GreedyTriangulator.new(Vector2(bounding_box.size.x + 50 * 2,
 													  bounding_box.size.y + 50 * 2))
 	if triangulation_mode == 1:
-		triangulator = BowyerWatsonTriangulator.new()
+		triangulator = DelaunayTriangulator.new()
 	triangles = triangulator.triangulate(PackedVector2Array(points))
 	
 	if use_multiple_threads: # run triangulation loop in the separated thred
