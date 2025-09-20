@@ -1,7 +1,3 @@
-# TODO -> Improve efficiency for deep search (search not through each cell one by one, 
-#         but through the whole region at once). It allow to remove search for duplicates
-
-
 class_name UniformGrid
 extends RefCounted
 ## A data structure for efficient search of fixed-radius neighbors on a 2D plane.

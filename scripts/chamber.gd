@@ -4,11 +4,8 @@ extends Node2D
 # WARNING -> _is_point_valid() must use cells system
 # INFO -> Add light movement
 # INFO -> Implement cells interaction system
-# INFO -> Implement points chaotic movement
 # INFO -> Implement points interaction
 # INFO -> Implement interaction_radius
-# INFO -> Add more points interacion modes
-# TOFIX -> add offscreen points offset variable
 
 #region EXPORT_PROPERTIES
 ## animation boundary settings
@@ -36,8 +33,7 @@ extends Node2D
 ## instructions on how a points will move during the simulation
 ## static - no movement at all
 ## directional - the points will start moving in a random direction, bouncing off the boundary
-## chaotic - the points will pick a random destination target each frame
-@export_enum("Static", "Directional", "Chaotic") var points_movement_mode = 1
+@export_enum("Static", "Directional") var points_movement_mode = 1
 ## instructions on how a points will interact with each other during the simulation
 ## ignore - the points will ignore each other
 ## repel - the points will repel from each other
@@ -57,8 +53,7 @@ extends Node2D
 ## static - no movement at all
 ## circular - the light source will circle around the bounding box center
 ## directional - the light source will start moving in a random direction, bouncing off the outer boundary
-## chaotic - the light source will pick a random destination target each frame
-@export_enum("Static", "Circular", "Directional", "Chaotic") var light_movement_mode = 0
+@export_enum("Static", "Circular", "Directional") var light_movement_mode = 0
 ## color gradient for shading triangles
 ## left color is for the most highlighted triangles
 ## right color is for the most shaded ones
@@ -72,11 +67,6 @@ extends Node2D
 
 ## triangulation algorithm and triangular grid settings
 @export_group("Triangulation")
-## priority for triagulation algorithm
-## fastest - uses the geedy triangulation algorithm for the best time and moderate quality of the triangular grid
-## more_accurate - uses the Delaunay condition and the Bowyer-Watson algorithm 
-## 				   for the worst time and best quality of the triangular grid
-@export_enum("Fastest", "More accurate") var triangulation_mode = 1
 ## run resource-intensive operations in a separate threads
 ## if true - the triangulation loop will be performed in a separate thread (highly recommended)
 ## if false - all operations will be performed in the main thread (may cause freezes)
@@ -108,18 +98,18 @@ extends Node2D
 
 #region BASIC_ANIMATION_DATA
 # containers for data
-var points : Array[Vector2] = []
-var directions : Array[Vector2] = []
-var triangles : Array[Triangle]
+var points: Array[Vector2] = []
+var directions: Array[Vector2] = []
+var triangles: Array[Triangle]
 
 # chosen algorithms
-var triangulator = null
-var animated_gradient : ColorRamp.AnimatedGradient = null
+var triangulator: DelaunayTriangulator = null
+var animated_gradient: ColorRamp.AnimatedGradient = null
 
 # triangulation loop paramethers
-var triangulation_timer : Timer = null
+var triangulation_timer: Timer = null
 var triangulate := true
-var triangulation_thread : Thread = null
+var triangulation_thread: Thread = null
 var mutex := Mutex.new()
 #endregion
 
@@ -191,7 +181,7 @@ func _generate_bounding_box_point() -> Vector2:
 
 
 ## check if generated new_point is valid
-func _is_point_valid(new_point) -> bool:
+func _is_point_valid(new_point: Vector2) -> bool:
 	for p in points:
 		# distance between two near points must be greather than specified minimum spacing
 		if p.distance_to(new_point) < points_min_spacing:
@@ -237,7 +227,7 @@ func _generate_off_screen_points() -> void:
 
 
 ## generate static points in the line segment [a; b]
-func _generate_line_segment_points(a : Vector2, b : Vector2) -> void:
+func _generate_line_segment_points(a: Vector2, b: Vector2) -> void:
 	for p in _subdivide_line_segment(a, b):
 		# save each subdivided point as the static off-screen point
 		points.push_back(p)
@@ -245,7 +235,7 @@ func _generate_line_segment_points(a : Vector2, b : Vector2) -> void:
 
 
 ## subdivide a line segment [a; b] into several smaller segments
-func _subdivide_line_segment(a : Vector2, b : Vector2) -> Array[Vector2]:
+func _subdivide_line_segment(a: Vector2, b: Vector2) -> Array[Vector2]:
 	var new_points : Array[Vector2] = []
 	var segments = [ {"from" : a, "to" : b} ] # store 'from' and 'to' points for each segment
 	var c = (a + b) / 2 # center point
@@ -269,13 +259,8 @@ func _subdivide_line_segment(a : Vector2, b : Vector2) -> Array[Vector2]:
 #region TRIANGULATION_LOOP
 ## setup the triangulation algorithm and the thread
 func _setup_triangulation() -> void:
-	# select triangulation algorithm
-	if triangulation_mode == 0:
-		triangulator = GreedyTriangulator.new(Vector2(bounding_box.size.x + 50 * 2,
-													  bounding_box.size.y + 50 * 2))
-	if triangulation_mode == 1:
-		triangulator = DelaunayTriangulator.new()
-	triangles = triangulator.triangulate(PackedVector2Array(points))
+	triangulator = DelaunayTriangulator.new()
+	triangles = triangulator.triangulate(points)
 	
 	if use_multiple_threads: # run triangulation loop in the separated thred
 		triangulation_thread = Thread.new()
@@ -325,7 +310,7 @@ func _process(delta: float) -> void:
 
 #region POINTS_MOVEMENT
 ## move the points towards the specified directions
-func _move_points_directional(delta : float) -> void:
+func _move_points_directional(delta: float) -> void:
 	# get mouse buttons input
 	var left_input = Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT)
 	var right_input = Input.is_mouse_button_pressed(MOUSE_BUTTON_RIGHT)
