@@ -1,4 +1,4 @@
-# Triangular patterns
+# <img src="triangulation_icon.png" width="30"></img> Triangular patterns
 ### A simple engine for creating your own live triangular animations
 
 #### --------------------------------- Features ---------------------------------
