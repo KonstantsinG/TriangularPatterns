@@ -2,88 +2,88 @@ extends Node2D
 
 
 #region EXPORT_PROPERTIES
-## animation boundary settings
+## Animation boundary settings
 @export_group("Boundary")
-## animation area dimensions
+## Animation area dimensions
 @export var bounding_box: Rect2 = Rect2(50, 50, 1050, 550)
-## use fullscreen mode for the animation area dimensions [br]
-## if true - will use a window dimensions for bounding_box value [br]
-## if false - will use a user-defined bounding_box value
+## Use fullscreen mode for the animation area dimensions[br]
+## if [code]true[/code] - will use a window dimensions for bounding_box value[br]
+## if [code]false[/code] - will use a user-defined bounding_box value
 @export var fullscreen: bool = true
-## draw the animation area dimensions
+## Draw the animation area dimensions
 @export var draw_bounding_box: bool = false
-## animation area dimensions color
+## Animation area dimensions color
 @export var bounding_box_color: Color = Color.WEB_GREEN
 
-## animation points settings
+## Animation points settings
 @export_group("Points")
-## amount of a generated points for the animation
-## 100-300 points give best the appearance and performance
+## Amount of a generated points for the animation[br]
+## [i][b]100-300[/b] points give best the appearance and performance[/i]
 @export_range(50, 300, 1, "or_greater") var points_amount : int = 100
-## minimum distance between a two close points
-## lower values will give a more chaotic distribution of a points
-## higher values will give a more uniform distribution
+## Minimum distance between a two close points[br]
+## Lower values will give a more chaotic distribution of a points[br]
+## Higher values will give a more uniform distribution[br]
 @export_range(5, 250, 1, "or_greater") var points_min_spacing : float = 50
-## instructions on how a points will move during the simulation
-## static - no movement at all
-## directional - the points will start moving in a random direction, bouncing off the boundary
+## Instructions on how a points will move during the simulation[br]
+## Static - no movement at all[br]
+## Directional - the points will start moving in a random direction, bouncing off the boundary
 @export_enum("Static", "Directional") var points_movement_mode = 1
-## points normal speed
+## Points normal speed
 @export_range(1, 30, 1) var points_speed: float = 10
-## draw dots to indicate the points position
+## Draw dots to indicate the points position
 @export var draw_points: bool = true
-## points color
+## Points color
 @export var points_color: Color = Color.BLACK
 
-## animation light and shading settings
+## Animation light and shading settings
 @export_group("Light")
-## light source initial position
+## Light source initial position
 @export var light_position: Vector2 = Vector2(100, 100)
-## instructions on how a light source will move during the simulation
-## static - no movement at all
-## circular - the light source will circle around the bounding box center
-## directional - the light source will start moving in a random direction, bouncing off the outer boundary
+## Instructions on how a light source will move during the simulation[br]
+## Static - no movement at all[br]
+## Circular - the light source will circle around the bounding box center[br]
+## Directional - the light source will start moving in a random direction, bouncing off the outer boundary
 @export_enum("Static", "Circular") var light_movement_mode = 0
-## light angular speed for circular movement mode
+## Light angular speed for circular movement mode
 @export_range(0.05, 1.0, 0.05) var light_angular_speed: float = 0.1
-## color gradient for shading triangles
-## left color is for the most highlighted triangles
-## right color is for the most shaded ones
+## Color gradient for shading triangles
+## Left color is for the most highlighted triangles
+## Right color is for the most shaded ones
 @export var light_color_ramp: Gradient
-## predefined color gradients
-## custom - use the color gradient specified in light_color_ramp
-## animated - creates a smooth transition between all predefined gradients at runtime
-## b&w-rainbow - predefined gradient palettes
+## Predefined color gradients[br]
+## Custom - use the color gradient specified in light_color_ramp[br]
+## Animated - creates a smooth transition between all predefined gradients at runtime[br]
+## B&W-rainbow - predefined gradient palettes
 @export_enum("Custom", "Animated", "B&W", "Mint", "Marshmallow", "Desert", "Midnight", "ForestSunset", "Cherry", \
 			 "Biscuit", "Rainbow") var color_ramp_mode = 3
 
-## triangulation algorithm and triangular grid settings
+## Triangulation algorithm and triangular grid settings
 @export_group("Triangulation")
-## run resource-intensive operations in a separate threads
-## if true - the triangulation loop will be performed in a separate thread (highly recommended)
-## if false - all operations will be performed in the main thread (may cause freezes)
+## Run resource-intensive operations in a separate threads[br]
+## if [code]true[/code] - the triangulation loop will be performed in a separate thread (highly recommended)[br]
+## if [code]false[/code] - all operations will be performed in the main thread (may cause freezes)
 @export var use_multiple_threads: bool = true
-## draw triangular grid
+## Draw triangular grid
 @export var draw_triangle_borders: bool = false
-## triangular grid color
+## Triangular grid color
 @export var triangle_borders_color: Color = Color(1.0, 1.0, 1.0, 0.1)
 
-## interations with animation settings
+## Interations with animation settings
 @export_group("Interaction")
-## use mouse cursor for interations
+## Use mouse cursor for interations
 @export var cursor_interaction: bool = true
-## target object to which interactions will be applied
-## points - interactions will affect the points
-## light - interactions will affect the light source
+## Target object to which interactions will be applied[br]
+## Points - interactions will affect the points[br]
+## Light - interactions will affect the light source
 @export_enum("Points", "Light") var interaction_target = 0
-## instructions on how the points will react on interactions
-## attract - mouse cursor (with R/LMB pressed) will attract the points
-## repel - mouse cursor (with R/LMB pressed) will repel the points
-## attract_and_repel - mouse cursor with LMB pressed will attract the points, with RMB pressed will repel the points
-@export_enum("Attract", "Repel", "Attract and Repel") var points_interaction_mode = 2
-## value that indicates how much interations will affect the targets
+## Instructions on how the mouse cursor will interact with the simulation[br]
+## Attract - mouse cursor (with R/LMB pressed) will attract the points[br]
+## Repel - mouse cursor (with R/LMB pressed) will repel the points[br]
+## Attract_and_Repel - mouse cursor with LMB pressed will attract the points, with RMB pressed will repel the points
+@export_enum("Attract", "Repel", "Attract and Repel") var cursor_interaction_mode = 2
+## Value that indicates how much interations will affect the targets
 @export_range(1, 100, 1) var interaction_magnitude: float = 20
-## value that indicates in which radius the targets will be affected by interactions
+## Value that indicates in which radius the targets will be affected by interactions
 @export_range(1, 150, 1) var interaction_radius: float = 150
 #endregion
 
@@ -318,7 +318,7 @@ func _move_points_directional(delta: float) -> void:
 		if cursor_interaction and interaction_target == 0 and (left_input or right_input):
 			var mouse_position = get_global_mouse_position()
 			var cursor_direction = points[i].direction_to(mouse_position)
-			if (points_interaction_mode == 1) or (points_interaction_mode == 2 and right_input):
+			if (cursor_interaction_mode == 1) or (cursor_interaction_mode == 2 and right_input):
 				cursor_direction *= -1
 			
 			var distance_to_cursor = points[i].distance_to(mouse_position)
