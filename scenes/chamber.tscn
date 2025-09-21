@@ -4,7 +4,5 @@
 
 [node name="Chamber" type="Node2D"]
 script = ExtResource("1_ecgjq")
-fullscreen = false
-draw_bounding_box = true
-draw_triangle_borders = true
-triangle_borders_color = Color(1, 1, 1, 0.0784314)
+light_movement_mode = 1
+color_ramp_mode = 1

@@ -1,25 +1,19 @@
 extends Node2D
 
-# TODO
-# WARNING -> _is_point_valid() must use cells system
-# INFO -> Add light movement
-# INFO -> Implement cells interaction system
-# INFO -> Implement points interaction
-# INFO -> Implement interaction_radius
 
 #region EXPORT_PROPERTIES
 ## animation boundary settings
 @export_group("Boundary")
 ## animation area dimensions
-@export var bounding_box : Rect2 = Rect2(50, 50, 1050, 550)
+@export var bounding_box: Rect2 = Rect2(50, 50, 1050, 550)
 ## use fullscreen mode for the animation area dimensions [br]
 ## if true - will use a window dimensions for bounding_box value [br]
 ## if false - will use a user-defined bounding_box value
-@export var fullscreen : bool = true
+@export var fullscreen: bool = true
 ## draw the animation area dimensions
-@export var draw_bounding_box : bool = false
+@export var draw_bounding_box: bool = false
 ## animation area dimensions color
-@export var bounding_box_color : Color = Color.WEB_GREEN
+@export var bounding_box_color: Color = Color.WEB_GREEN
 
 ## animation points settings
 @export_group("Points")
@@ -34,30 +28,28 @@ extends Node2D
 ## static - no movement at all
 ## directional - the points will start moving in a random direction, bouncing off the boundary
 @export_enum("Static", "Directional") var points_movement_mode = 1
-## instructions on how a points will interact with each other during the simulation
-## ignore - the points will ignore each other
-## repel - the points will repel from each other
-@export_enum("Ignore", "Repel") var points_interaction_mdoe = 0
 ## points normal speed
-@export_range(1, 30, 1) var points_speed : float = 10
+@export_range(1, 30, 1) var points_speed: float = 10
 ## draw dots to indicate the points position
-@export var draw_points : bool = true
+@export var draw_points: bool = true
 ## points color
-@export var points_color : Color = Color.BLACK
+@export var points_color: Color = Color.BLACK
 
 ## animation light and shading settings
 @export_group("Light")
 ## light source initial position
-@export var light_position : Vector2 = Vector2(100, 100)
+@export var light_position: Vector2 = Vector2(100, 100)
 ## instructions on how a light source will move during the simulation
 ## static - no movement at all
 ## circular - the light source will circle around the bounding box center
 ## directional - the light source will start moving in a random direction, bouncing off the outer boundary
-@export_enum("Static", "Circular", "Directional") var light_movement_mode = 0
+@export_enum("Static", "Circular") var light_movement_mode = 0
+## light angular speed for circular movement mode
+@export_range(0.05, 1.0, 0.05) var light_angular_speed: float = 0.1
 ## color gradient for shading triangles
 ## left color is for the most highlighted triangles
 ## right color is for the most shaded ones
-@export var light_color_ramp : Gradient
+@export var light_color_ramp: Gradient
 ## predefined color gradients
 ## custom - use the color gradient specified in light_color_ramp
 ## animated - creates a smooth transition between all predefined gradients at runtime
@@ -70,16 +62,16 @@ extends Node2D
 ## run resource-intensive operations in a separate threads
 ## if true - the triangulation loop will be performed in a separate thread (highly recommended)
 ## if false - all operations will be performed in the main thread (may cause freezes)
-@export var use_multiple_threads : bool = true
+@export var use_multiple_threads: bool = true
 ## draw triangular grid
-@export var draw_triangle_borders : bool = false
+@export var draw_triangle_borders: bool = false
 ## triangular grid color
-@export var triangle_borders_color : Color = Color(1.0, 1.0, 1.0, 0.3)
+@export var triangle_borders_color: Color = Color(1.0, 1.0, 1.0, 0.1)
 
 ## interations with animation settings
 @export_group("Interaction")
 ## use mouse cursor for interations
-@export var cursor_interaction : bool = true
+@export var cursor_interaction: bool = true
 ## target object to which interactions will be applied
 ## points - interactions will affect the points
 ## light - interactions will affect the light source
@@ -90,9 +82,9 @@ extends Node2D
 ## attract_and_repel - mouse cursor with LMB pressed will attract the points, with RMB pressed will repel the points
 @export_enum("Attract", "Repel", "Attract and Repel") var points_interaction_mode = 2
 ## value that indicates how much interations will affect the targets
-@export_range(1, 100, 1) var interaction_magnitude : float = 20
+@export_range(1, 100, 1) var interaction_magnitude: float = 20
 ## value that indicates in which radius the targets will be affected by interactions
-@export_range(1, 150, 1) var interaction_radius : float = 50
+@export_range(1, 150, 1) var interaction_radius: float = 150
 #endregion
 
 
@@ -102,9 +94,9 @@ var points: Array[Vector2] = []
 var directions: Array[Vector2] = []
 var triangles: Array[Triangle]
 
-# chosen algorithms
 var triangulator: DelaunayTriangulator = null
 var animated_gradient: ColorRamp.AnimatedGradient = null
+var light_angle: float = 3.9
 
 # triangulation loop paramethers
 var triangulation_timer: Timer = null
@@ -300,6 +292,10 @@ func _process(delta: float) -> void:
 	if points_movement_mode == 1:
 		_move_points_directional(delta)
 	
+	# move the light source if necessary
+	if light_movement_mode == 1:
+		_move_light(delta)
+	
 	# animate the light color ramp if necessary
 	if color_ramp_mode == ColorRamp.ANIMATED_GRADIENT:
 		_animate_gradient(delta)
@@ -320,8 +316,6 @@ func _move_points_directional(delta: float) -> void:
 		
 		# if points interaction is enabled and some input is received
 		if cursor_interaction and interaction_target == 0 and (left_input or right_input):
-			# TODO -> comment everything when algorithm will be ready
-			
 			var mouse_position = get_global_mouse_position()
 			var cursor_direction = points[i].direction_to(mouse_position)
 			if (points_interaction_mode == 1) or (points_interaction_mode == 2 and right_input):
@@ -330,7 +324,7 @@ func _move_points_directional(delta: float) -> void:
 			var distance_to_cursor = points[i].distance_to(mouse_position)
 			var distance_multiplier = distance_to_cursor * 0.01
 			var cursor_velocity = cursor_direction * interaction_magnitude / distance_multiplier
-			if directions[i] != Vector2.ZERO and distance_to_cursor > 15:
+			if directions[i] != Vector2.ZERO and (distance_to_cursor > 15 and distance_to_cursor < interaction_radius):
 				velocity += cursor_velocity
 		
 		_check_boundary_intersections(i)
@@ -362,6 +356,35 @@ func _check_boundary_intersections(point_idx : int) -> void:
 	if points[point_idx].y >= bounding_box.position.y + bounding_box.size.y:
 		directions[point_idx].y *= -1
 		points[point_idx].y = bounding_box.position.y + bounding_box.size.y - 1
+#endregion
+
+
+#region LIGHT_MOVEMENT
+func _move_light(delta: float) -> void:
+	# bounding box center
+	var center = (bounding_box.size - bounding_box.position) / 2.0
+	
+	# if interactions with light is enables
+	if cursor_interaction and interaction_target == 1:
+		var left_input = Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT)
+		var right_input = Input.is_mouse_button_pressed(MOUSE_BUTTON_RIGHT)
+		
+		# if some mouse input received
+		if left_input or right_input:
+			# light source must follow cursor
+			light_position = get_global_mouse_position()
+			light_angle = (light_position - center).angle()
+			return
+	
+	# move light source by parametric equation of a circle
+	var radius = light_position.distance_to(center)
+	light_angle += light_angular_speed * delta
+	
+	# x = r * cos(t); y = r * sin(t)
+	var new_x = center.x + radius * cos(light_angle)
+	var new_y = center.y + radius * sin(light_angle)
+	
+	light_position = Vector2(new_x, new_y)
 #endregion
 
 
